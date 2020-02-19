@@ -51,5 +51,51 @@ module.exports = {
     }
 
     return res.json(dev);
+  },
+
+  async update(req, res) {
+    const { id } = req.params;
+    const { github_username, latitude, longitude } = req.body;
+
+    if (!id) {
+      return res.status(400).json({ error: "Validation fails." });
+    }
+
+    const dev = await Dev.findById(id);
+
+    if (github_username !== dev.github_username) {
+      const devExistis = await Dev.findOne({ where: { github_username } });
+
+      if (devExistis) {
+        return res.status(400).json({ error: "Dev already exists." });
+      }
+    }
+
+    const response = await axios.get(
+      `https://api.github.com/users/${github_username}`
+    );
+
+    const { name = login, avatar_url, bio } = response.data;
+
+    const location = {
+      type: "Point",
+      coordinates: [longitude, latitude]
+    };
+
+    const devUpdated = await Dev.findByIdAndUpdate(
+      id,
+      { ...req.body, location, name, avatar_url, bio },
+      { new: true }
+    );
+
+    return res.json(devUpdated);
+  },
+
+  async delete(req, res) {
+    const { id } = req.params;
+
+    const deleted = await Dev.findByIdAndDelete(id);
+
+    return res.json(deleted);
   }
 };
